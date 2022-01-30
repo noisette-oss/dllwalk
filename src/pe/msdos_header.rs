@@ -1,0 +1,46 @@
+use nom::{
+    bytes::complete::{tag, take},
+    number::complete::le_u32,
+    sequence::tuple,
+};
+
+use super::FileParseResult;
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct MsDosHeader {
+    pub pe_offset: u32,
+}
+
+impl MsDosHeader {
+    pub fn parse(input: &[u8]) -> FileParseResult<Self> {
+        let (input, (_, _, pe_offset)) =
+            tuple((tag("MZ".as_bytes()), take(0x3a_usize), le_u32))(input)?;
+
+        Ok((input, MsDosHeader { pe_offset }))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn msdos_header() {
+        let data = vec![
+            0x4d, 0x5a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x67, 0x45, 0x23, 0x01,
+        ];
+
+        assert_eq!(
+            MsDosHeader::parse(&data).unwrap().1,
+            MsDosHeader {
+                pe_offset: 0x01234567
+            }
+        );
+
+        assert_eq!(MsDosHeader::parse(&vec![0u8; 100]).is_err(), true);
+    }
+}
